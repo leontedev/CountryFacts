@@ -4,6 +4,8 @@
 
 Challenge #5 - Day 59 - HackingWithSwift.com/100
 
+[[day60.gif]]
+
 #+BEGIN_QUOTE
 Your challenge is to make an app that contains facts about countries: show a list of country names in a table view, then when one is tapped bring in a new screen that contains its capital city, size, population, currency, and any other facts that interest you. The type of facts you include is down to you – Wikipedia has a huge selection to choose from.
 
@@ -11,3 +13,66 @@ To make this app, I would recommend you blend parts of project 1 project 7. That
 
 How you load data into the app is going to be an interesting problem for you to solve. I suggested project 7 above because a sensible approach would be to create a JSON file with your facts in, then load that in using contentsOf and parse it using Codable. Regardless of how you end up solving this, I suggest you don’t just hard-code it into the app – i.e., typing all the facts manually into your Swift code. You’re better than that!
 #+END_QUOTE
+
+** Day 60
+*** JSON Source
+I used the World Factbook by CIA data from https://github.com/factbook/factbook.json
+*** Codable data structure
+The JSON structure is composed from multiple objects nested in one another, eg:
+#+BEGIN_SRC json
+{
+  "Geography": {
+    "Location": {
+      "text": "Southwestern Europe, Pyrenees mountains, on the border between France and Spain"
+    },
+#+END_SRC
+
+This can be represented with structs which contain structs and so on:
+
+#+BEGIN_SRC Swift
+    struct Geography: Codable {
+        struct Location: Codable {
+            let text: String
+        }
+        let Location: Location
+    }
+#+END_SRC
+
+Another issue was that some of the object names contained spaced. To implement this, a CodingKeys enum needs to be defined as well:
+
+#+BEGIN_SRC Swift
+struct Country: Codable {
+    
+    enum CodingKeys: String, CodingKey {
+        case people = "People and Society"
+        case introduction = "Introduction"
+        case geography = "Geography"
+        case government = "Government"
+    }
+#+END_SRC
+
+All objects have to be included in the enum though.
+
+*** Loading from the Bundle
+The .json files are stored in the Bundle, so the files can be read using:
+
+#+BEGIN_SRC Swift
+FileManager.default.contentsOfDirectory(atPath: Bundle.main.bundlePath)
+#+END_SRC
+
+And checked for the .json suffix.
+*** DetailViewController
+I've used the Storyboard to define the DetailViewController.
+So when a row is selected, I instantiate the DetailViewController using its identifier, casting it as DetailViewController in order to assign the corresponding country struct.
+
+#+BEGIN_SRC Swift
+guard let detailVC = storyboard?.instantiateViewController(identifier: "DetailID") as? DetailViewController else { return }
+        
+detailVC.country = countries[indexPath.row]
+        
+navigationController?.pushViewController(detailVC, animated: true)
+#+END_SRC
+
+*** UIScrollView & UITextView & UILabel
+Setting up the Scroll View to work well with a UITextView was pretty painful. I had to set up another "Content" View inside the Scroll View and have the height of the scroll view modify dynamically based on the height of the Text View.
+In the end I opted for a UILabel instead, and I could remove the extra Content View.
